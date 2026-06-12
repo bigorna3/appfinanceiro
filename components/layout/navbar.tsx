@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { TrendingUp, LayoutDashboard, ArrowLeftRight, LogOut, Menu } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { TrendingUp, LayoutDashboard, ArrowLeftRight, LogOut, Menu, Repeat2, LineChart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,8 +16,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 const NAV_ITEMS = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/transactions", label: "Transações", icon: ArrowLeftRight },
+  { href: "/dashboard", label: "Dashboard", mobileLabel: "Dashboard", icon: LayoutDashboard },
+  { href: "/transactions", label: "Transações", mobileLabel: "Transações", icon: ArrowLeftRight },
+  { href: "/recurring", label: "Despesas Recorrentes", mobileLabel: "Recorrentes", icon: Repeat2 },
+  { href: "/investments", label: "Investimentos", mobileLabel: "Investimentos", icon: LineChart },
 ];
 
 interface NavbarProps {
@@ -36,35 +38,40 @@ export function Navbar({ userEmail }: NavbarProps) {
   }
 
   return (
-    <header className="sticky top-0 z-40 border-b bg-white">
+    <header className="sticky top-0 z-40 border-b bg-card">
       <div className="flex h-16 items-center justify-between px-4">
         {/* Mobile brand */}
         <div className="flex items-center gap-2 lg:hidden">
           <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-600">
             <TrendingUp className="h-3.5 w-3.5 text-white" />
           </div>
-          <span className="font-bold text-slate-900">
-            Finanças<span className="text-blue-600">Pessoais</span>
+          <span className="font-bold text-foreground">
+            Finanças<span className="text-blue-500">Pessoais</span>
           </span>
         </div>
 
         {/* Page title (desktop) */}
         <div className="hidden lg:block">
-          <h1 className="text-lg font-semibold text-slate-900">
+          <h1 className="text-lg font-semibold text-foreground">
             {NAV_ITEMS.find((i) => i.href === pathname)?.label ?? ""}
           </h1>
         </div>
 
         {/* Right actions */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
+          {/* Theme toggle (desktop) */}
+          <div className="hidden lg:block">
+            <ThemeToggle />
+          </div>
+
           {/* Desktop user menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm" className="hidden gap-2 lg:flex">
-                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-100 text-xs font-semibold text-blue-700">
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-100 text-xs font-semibold text-blue-700 dark:bg-blue-900/40 dark:text-blue-400">
                   {userEmail?.charAt(0).toUpperCase() ?? "U"}
                 </div>
-                <span className="max-w-[160px] truncate text-sm text-slate-600">
+                <span className="max-w-[160px] truncate text-sm text-muted-foreground">
                   {userEmail}
                 </span>
               </Button>
@@ -107,6 +114,13 @@ export function Navbar({ userEmail }: NavbarProps) {
                 </DropdownMenuItem>
               ))}
               <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <div className="flex items-center justify-between px-2 py-1">
+                  <span className="text-sm">Tema</span>
+                  <ThemeToggle />
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="cursor-pointer text-red-600 focus:text-red-600"
                 onClick={handleLogout}
@@ -129,11 +143,16 @@ export function Navbar({ userEmail }: NavbarProps) {
               href={item.href}
               className={cn(
                 "flex flex-1 flex-col items-center gap-1 py-2 text-xs font-medium transition-colors",
-                active ? "text-blue-600" : "text-slate-500"
+                active ? "text-blue-600 dark:text-blue-400" : "text-muted-foreground"
               )}
             >
-              <item.icon className={cn("h-5 w-5", active ? "text-blue-600" : "text-slate-400")} />
-              {item.label}
+              <item.icon
+                className={cn(
+                  "h-5 w-5",
+                  active ? "text-blue-600 dark:text-blue-400" : "text-muted-foreground"
+                )}
+              />
+              <span className="truncate max-w-full">{item.mobileLabel}</span>
             </Link>
           );
         })}

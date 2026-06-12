@@ -12,13 +12,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CATEGORY_COLORS, type Category } from "@/lib/types";
 import { formatCurrency } from "@/lib/utils";
 
-interface ChartEntry {
+export interface ChartEntry {
   name: Category;
   value: number;
 }
 
 interface CategoryChartProps {
+  title: string;
   data: ChartEntry[];
+  emptyMessage?: string;
 }
 
 const CustomTooltip = ({
@@ -30,25 +32,25 @@ const CustomTooltip = ({
 }) => {
   if (active && payload && payload.length) {
     return (
-      <div className="rounded-lg border bg-white px-3 py-2 shadow-md text-sm">
-        <p className="font-medium text-slate-700">{payload[0].name}</p>
-        <p className="text-slate-600">{formatCurrency(payload[0].value)}</p>
+      <div className="rounded-lg border bg-card px-3 py-2 shadow-md text-sm">
+        <p className="font-medium text-card-foreground">{payload[0].name}</p>
+        <p className="text-muted-foreground">{formatCurrency(payload[0].value)}</p>
       </div>
     );
   }
   return null;
 };
 
-export function CategoryChart({ data }: CategoryChartProps) {
+export function CategoryChart({ title, data, emptyMessage }: CategoryChartProps) {
   if (data.length === 0) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Despesas por Categoria</CardTitle>
+          <CardTitle className="text-base">{title}</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex h-48 items-center justify-center text-sm text-slate-400">
-            Nenhuma despesa registrada neste mês
+          <div className="flex h-48 items-center justify-center text-sm text-muted-foreground">
+            {emptyMessage ?? "Nenhum dado registrado neste mês"}
           </div>
         </CardContent>
       </Card>
@@ -58,17 +60,17 @@ export function CategoryChart({ data }: CategoryChartProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Despesas por Categoria</CardTitle>
+        <CardTitle className="text-base">{title}</CardTitle>
       </CardHeader>
       <CardContent>
-        <ResponsiveContainer width="100%" height={280}>
+        <ResponsiveContainer width="100%" height={260}>
           <PieChart>
             <Pie
               data={data}
               cx="50%"
-              cy="45%"
-              outerRadius={90}
-              innerRadius={40}
+              cy="44%"
+              outerRadius={85}
+              innerRadius={38}
               paddingAngle={3}
               dataKey="value"
             >
@@ -82,7 +84,7 @@ export function CategoryChart({ data }: CategoryChartProps) {
             <Tooltip content={<CustomTooltip />} />
             <Legend
               formatter={(value) => (
-                <span className="text-xs text-slate-600">{value}</span>
+                <span className="text-xs text-muted-foreground">{value}</span>
               )}
             />
           </PieChart>

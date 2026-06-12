@@ -28,6 +28,7 @@ export default function DashboardPage() {
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [previousBalance, setPreviousBalance] = useState(0);
   const [loading, setLoading] = useState(true);
   const [openForm, setOpenForm] = useState(false);
 
@@ -43,14 +44,27 @@ export default function DashboardPage() {
       .toISOString()
       .split("T")[0];
 
-    const { data } = await supabase
-      .from("transactions")
-      .select("*")
-      .gte("date", startDate)
-      .lte("date", endDate)
-      .order("date", { ascending: false });
+    // Fetch current month transactions and previous balance in parallel
+    const [currentRes, prevRes] = await Promise.all([
+      supabase
+        .from("transactions")
+        .select("*")
+        .gte("date", startDate)
+        .lte("date", endDate)
+        .order("date", { ascending: false }),
+      supabase
+        .from("transactions")
+        .select("amount, type")
+        .lt("date", startDate),
+    ]);
 
-    setTransactions(data ?? []);
+    setTransactions(currentRes.data ?? []);
+
+    const prevBal = (prevRes.data ?? []).reduce((sum, t) => {
+      return sum + (t.type === "income" ? t.amount : -t.amount);
+    }, 0);
+    setPreviousBalance(prevBal);
+
     setLoading(false);
   }
 
@@ -69,9 +83,20 @@ export default function DashboardPage() {
 
   const balance = totalIncome - totalExpense;
 
-  const categoryData = Object.entries(
+  const expenseChartData = Object.entries(
     transactions
       .filter((t) => t.type === "expense")
+      .reduce((acc, t) => {
+        acc[t.category] = (acc[t.category] ?? 0) + t.amount;
+        return acc;
+      }, {} as Record<string, number>)
+  )
+    .map(([name, value]) => ({ name: name as Category, value }))
+    .sort((a, b) => b.value - a.value);
+
+  const incomeChartData = Object.entries(
+    transactions
+      .filter((t) => t.type === "income")
       .reduce((acc, t) => {
         acc[t.category] = (acc[t.category] ?? 0) + t.amount;
         return acc;
@@ -86,14 +111,13 @@ export default function DashboardPage() {
     <>
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900">Dashboard</h2>
-          <p className="text-sm text-slate-500">
+          <h2 className="text-2xl font-bold text-foreground">Dashboard</h2>
+          <p className="text-sm text-muted-foreground">
             Resumo financeiro de {MONTHS[selectedMonth - 1]} {selectedYear}
           </p>
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Month selector */}
           <Select
             value={String(selectedMonth)}
             onValueChange={(v) => setSelectedMonth(Number(v))}
@@ -135,7 +159,7 @@ export default function DashboardPage() {
 
       {loading ? (
         <div className="flex h-64 items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
       ) : (
         <div className="space-y-6">
@@ -143,12 +167,23 @@ export default function DashboardPage() {
             totalIncome={totalIncome}
             totalExpense={totalExpense}
             balance={balance}
+            previousBalance={previousBalance}
           />
 
           <div className="grid gap-6 lg:grid-cols-2">
-            <CategoryChart data={categoryData} />
-            <RecentTransactions transactions={recentTransactions} />
+            <CategoryChart
+              title="Despesas por Categoria"
+              data={expenseChartData}
+              emptyMessage="Nenhuma despesa registrada neste mês"
+            />
+            <CategoryChart
+              title="Receitas por Categoria"
+              data={incomeChartData}
+              emptyMessage="Nenhuma receita registrada neste mês"
+            />
           </div>
+
+          <RecentTransactions transactions={recentTransactions} />
         </div>
       )}
 

@@ -2,7 +2,9 @@ import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function middleware(request: NextRequest) {
-  let response = NextResponse.next({ request: { headers: request.headers } });
+  let response = NextResponse.next({
+    request: { headers: request.headers },
+  });
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -26,12 +28,10 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+  const { data: { session } } = await supabase.auth.getSession();
 
   const { pathname } = request.nextUrl;
-  const protectedPaths = ["/dashboard", "/transactions"];
+  const protectedPaths = ["/dashboard", "/transactions", "/recurring", "/investments"];
   const isProtected = protectedPaths.some((p) => pathname.startsWith(p));
   const isAuthPage = pathname === "/login" || pathname === "/register";
 

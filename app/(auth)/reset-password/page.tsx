@@ -2,13 +2,20 @@
 
 export const dynamic = "force-dynamic";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { TrendingUp, Loader2, Eye, EyeOff } from "lucide-react";
+import {
+  TrendingUp,
+  Loader2,
+  Eye,
+  EyeOff,
+  CheckCircle2,
+  AlertCircle,
+} from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,11 +31,7 @@ import {
 
 const schema = z
   .object({
-    email: z.string().email("E-mail inválido"),
-    password: z
-      .string()
-      .min(6, "Senha deve ter pelo menos 6 caracteres")
-      .max(72),
+    password: z.string().min(6, "Senha deve ter pelo menos 6 caracteres").max(72),
     confirmPassword: z.string(),
   })
   .refine((d) => d.password === d.confirmPassword, {
@@ -38,12 +41,31 @@ const schema = z
 
 type FormData = z.infer<typeof schema>;
 
-export default function RegisterPage() {
-  const router = useRouter();
+export default function ResetPasswordPage() {
   const supabase = createClient();
+  const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    // The auth/callback route already exchanged the code for a session.
+    // We just need to verify a valid session exists.
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setReady(!!session);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event) => {
+        if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") {
+          setReady(true);
+        }
+      }
+    );
+
+    return () => subscription.unsubscribe();
+  }, [supabase.auth]);
 
   const {
     register,
@@ -53,41 +75,59 @@ export default function RegisterPage() {
 
   async function onSubmit(data: FormData) {
     setServerError(null);
-    const { error } = await supabase.auth.signUp({
-      email: data.email,
-      password: data.password,
-    });
+    const { error } = await supabase.auth.updateUser({ password: data.password });
 
     if (error) {
-      if (error.message.includes("already registered")) {
-        setServerError("Este e-mail já está cadastrado. Faça login.");
-      } else {
-        setServerError("Erro ao criar conta. Tente novamente.");
-      }
+      setServerError("Não foi possível redefinir a senha. O link pode ter expirado.");
       return;
     }
 
     setSuccess(true);
-    setTimeout(() => {
-      router.refresh();
-      router.push("/dashboard");
-    }, 1500);
+    await supabase.auth.signOut();
+    setTimeout(() => router.push("/login"), 2500);
   }
 
   if (success) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50 p-4">
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-950 dark:to-slate-900 p-4">
         <Card className="w-full max-w-md text-center">
-          <CardContent className="pt-8 pb-8">
+          <CardContent className="pt-10 pb-8">
             <div className="mb-4 flex justify-center">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-green-100">
-                <TrendingUp className="h-7 w-7 text-green-600" />
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
+                <CheckCircle2 className="h-8 w-8 text-green-600 dark:text-green-400" />
               </div>
             </div>
-            <h2 className="mb-2 text-xl font-semibold text-slate-900">
-              Conta criada!
+            <h2 className="mb-2 text-xl font-semibold text-foreground">
+              Senha redefinida!
             </h2>
-            <p className="text-slate-600">Redirecionando para o dashboard...</p>
+            <p className="text-muted-foreground text-sm">
+              Redirecionando para o login...
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!ready) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-950 dark:to-slate-900 p-4">
+        <Card className="w-full max-w-md text-center">
+          <CardContent className="pt-10 pb-8">
+            <div className="mb-4 flex justify-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-orange-100 dark:bg-orange-900/30">
+                <AlertCircle className="h-8 w-8 text-orange-600 dark:text-orange-400" />
+              </div>
+            </div>
+            <h2 className="mb-2 text-xl font-semibold text-foreground">
+              Link inválido ou expirado
+            </h2>
+            <p className="text-muted-foreground mb-6 text-sm">
+              Solicite um novo link de redefinição de senha.
+            </p>
+            <Button variant="outline" asChild>
+              <Link href="/forgot-password">Solicitar novo link</Link>
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -95,62 +135,49 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50 p-4">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-950 dark:to-slate-900 p-4">
       <div className="w-full max-w-md">
         {/* Brand */}
         <div className="mb-8 flex flex-col items-center gap-2">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600 shadow-md">
             <TrendingUp className="h-6 w-6 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900">
-            Finanças<span className="text-blue-600">Pessoais</span>
+          <h1 className="text-2xl font-bold text-foreground">
+            Finanças<span className="text-blue-500">Pessoais</span>
           </h1>
         </div>
 
         <Card>
           <CardHeader className="space-y-1">
-            <CardTitle className="text-xl">Criar conta grátis</CardTitle>
+            <CardTitle className="text-xl">Redefinir senha</CardTitle>
             <CardDescription>
-              Comece a controlar suas finanças agora
+              Escolha uma nova senha para a sua conta
             </CardDescription>
           </CardHeader>
 
           <form onSubmit={handleSubmit(onSubmit)}>
             <CardContent className="space-y-4">
               {serverError && (
-                <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
+                <div className="flex items-start gap-2 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-900/20 dark:text-red-400">
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
                   {serverError}
                 </div>
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="email">E-mail</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="seu@email.com"
-                  autoComplete="email"
-                  {...register("email")}
-                />
-                {errors.email && (
-                  <p className="text-xs text-red-600">{errors.email.message}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="password">Senha</Label>
+                <Label htmlFor="password">Nova senha</Label>
                 <div className="relative">
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
                     placeholder="Mínimo 6 caracteres"
-                    autoComplete="new-password"
+                    autoFocus
                     {...register("password")}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword((v) => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   >
                     {showPassword ? (
                       <EyeOff className="h-4 w-4" />
@@ -160,19 +187,16 @@ export default function RegisterPage() {
                   </button>
                 </div>
                 {errors.password && (
-                  <p className="text-xs text-red-600">
-                    {errors.password.message}
-                  </p>
+                  <p className="text-xs text-red-600">{errors.password.message}</p>
                 )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirmar senha</Label>
+                <Label htmlFor="confirmPassword">Confirmar nova senha</Label>
                 <Input
                   id="confirmPassword"
                   type="password"
                   placeholder="Repita a senha"
-                  autoComplete="new-password"
                   {...register("confirmPassword")}
                 />
                 {errors.confirmPassword && (
@@ -183,27 +207,17 @@ export default function RegisterPage() {
               </div>
             </CardContent>
 
-            <CardFooter className="flex flex-col gap-4">
+            <CardFooter>
               <Button type="submit" className="w-full" disabled={isSubmitting}>
                 {isSubmitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Criando conta...
+                    Salvando...
                   </>
                 ) : (
-                  "Criar conta"
+                  "Salvar nova senha"
                 )}
               </Button>
-
-              <p className="text-center text-sm text-slate-600">
-                Já tem conta?{" "}
-                <Link
-                  href="/login"
-                  className="font-medium text-blue-600 hover:underline"
-                >
-                  Entrar
-                </Link>
-              </p>
             </CardFooter>
           </form>
         </Card>

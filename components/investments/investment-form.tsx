@@ -4,9 +4,9 @@ import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Loader2 } from "lucide-react";
+import { Loader2, TrendingUp } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { ALL_CATEGORIES, INVESTMENT_SUBCATEGORIES, type Transaction } from "@/lib/types";
+import { INVESTMENT_SUBCATEGORIES, type Transaction } from "@/lib/types";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +29,7 @@ import {
 
 const schema = z.object({
   description: z.string().min(1, "Descrição obrigatória").max(100),
+  subcategory: z.string().min(1, "Tipo de investimento obrigatório"),
   amount: z
     .string()
     .min(1, "Valor obrigatório")
@@ -38,27 +39,24 @@ const schema = z.object({
         parseFloat(v.replace(",", ".")) > 0,
       "Valor deve ser maior que zero"
     ),
-  type: z.enum(["income", "expense"]),
-  category: z.string().min(1, "Categoria obrigatória"),
-  subcategory: z.string().optional(),
   date: z.string().min(1, "Data obrigatória"),
 });
 
 type FormData = z.infer<typeof schema>;
 
-interface TransactionFormProps {
+interface InvestmentFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
   transaction?: Transaction;
 }
 
-export function TransactionForm({
+export function InvestmentForm({
   open,
   onOpenChange,
   onSuccess,
   transaction,
-}: TransactionFormProps) {
+}: InvestmentFormProps) {
   const supabase = createClient();
   const { toast } = useToast();
   const isEditing = !!transaction;
@@ -73,40 +71,26 @@ export function TransactionForm({
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
-      type: "expense",
       date: new Date().toISOString().split("T")[0],
     },
   });
 
-  const selectedType = watch("type");
-  const selectedCategory = watch("category");
   const selectedSubcategory = watch("subcategory");
-
-  // Clear subcategory when category changes away from Investimentos
-  useEffect(() => {
-    if (selectedCategory !== "Investimentos") {
-      setValue("subcategory", undefined);
-    }
-  }, [selectedCategory, setValue]);
 
   useEffect(() => {
     if (open) {
       if (transaction) {
         reset({
           description: transaction.description,
+          subcategory: transaction.subcategory ?? "",
           amount: String(transaction.amount),
-          type: transaction.type,
-          category: transaction.category,
-          subcategory: transaction.subcategory ?? undefined,
           date: transaction.date,
         });
       } else {
         reset({
           description: "",
+          subcategory: "",
           amount: "",
-          type: "expense",
-          category: "",
-          subcategory: undefined,
           date: new Date().toISOString().split("T")[0],
         });
       }
@@ -123,9 +107,9 @@ export function TransactionForm({
       user_id: user.id,
       description: data.description,
       amount: parseFloat(data.amount.replace(",", ".")),
-      type: data.type,
-      category: data.category,
-      subcategory: data.category === "Investimentos" ? (data.subcategory || null) : null,
+      type: "expense" as const,
+      category: "Investimentos" as const,
+      subcategory: data.subcategory,
       date: data.date,
     };
 
@@ -142,17 +126,17 @@ export function TransactionForm({
     if (error) {
       toast({
         title: "Erro",
-        description: "Não foi possível salvar a transação.",
+        description: "Não foi possível salvar o aporte.",
         variant: "destructive",
       });
       return;
     }
 
     toast({
-      title: isEditing ? "Transação atualizada" : "Transação criada",
+      title: isEditing ? "Aporte atualizado" : "Aporte registrado",
       description: isEditing
         ? "As alterações foram salvas."
-        : "Transação registrada com sucesso.",
+        : "Investimento registrado com sucesso.",
     });
     onSuccess();
   }
@@ -161,48 +145,53 @@ export function TransactionForm({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>
-            {isEditing ? "Editar transação" : "Nova transação"}
-          </DialogTitle>
-          <DialogDescription>
-            {isEditing
-              ? "Atualize os dados da transação."
-              : "Preencha os dados da nova transação."}
-          </DialogDescription>
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-100 dark:bg-indigo-900/30">
+              <TrendingUp className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+            </div>
+            <div>
+              <DialogTitle>
+                {isEditing ? "Editar aporte" : "Novo aporte"}
+              </DialogTitle>
+              <DialogDescription>
+                {isEditing
+                  ? "Atualize os dados do investimento."
+                  : "Registre um novo aporte ou investimento."}
+              </DialogDescription>
+            </div>
+          </div>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          {/* Type toggle */}
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => setValue("type", "expense")}
-              className={`rounded-lg border-2 py-2.5 text-sm font-medium transition-colors ${
-                selectedType === "expense"
-                  ? "border-red-500 bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400"
-                  : "border-border text-muted-foreground hover:border-muted-foreground"
-              }`}
-            >
-              Despesa
-            </button>
-            <button
-              type="button"
-              onClick={() => setValue("type", "income")}
-              className={`rounded-lg border-2 py-2.5 text-sm font-medium transition-colors ${
-                selectedType === "income"
-                  ? "border-green-500 bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400"
-                  : "border-border text-muted-foreground hover:border-muted-foreground"
-              }`}
-            >
-              Receita
-            </button>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 pt-1">
+          {/* Investment type / subcategory */}
+          <div className="space-y-2">
+            <Label>Tipo de investimento</Label>
+            <div className="grid grid-cols-3 gap-2">
+              {INVESTMENT_SUBCATEGORIES.map((sub) => (
+                <button
+                  key={sub}
+                  type="button"
+                  onClick={() => setValue("subcategory", sub, { shouldValidate: true })}
+                  className={`rounded-lg border-2 px-2 py-2 text-xs font-medium transition-colors ${
+                    selectedSubcategory === sub
+                      ? "border-indigo-500 bg-indigo-50 text-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-400"
+                      : "border-border text-muted-foreground hover:border-muted-foreground"
+                  }`}
+                >
+                  {sub}
+                </button>
+              ))}
+            </div>
+            {errors.subcategory && (
+              <p className="text-xs text-red-600">{errors.subcategory.message}</p>
+            )}
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="description">Descrição</Label>
             <Input
               id="description"
-              placeholder="Ex: Almoço, Salário, Uber..."
+              placeholder="Ex: CDB Itaú, PETR4, Bitcoin, Tesouro IPCA..."
               {...register("description")}
             />
             {errors.description && (
@@ -212,7 +201,7 @@ export function TransactionForm({
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label htmlFor="amount">Valor (R$)</Label>
+              <Label htmlFor="amount">Valor aportado (R$)</Label>
               <Input
                 id="amount"
                 placeholder="0,00"
@@ -233,52 +222,6 @@ export function TransactionForm({
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label>Categoria</Label>
-            <Select
-              value={selectedCategory}
-              onValueChange={(v) =>
-                setValue("category", v, { shouldValidate: true })
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione uma categoria" />
-              </SelectTrigger>
-              <SelectContent>
-                {ALL_CATEGORIES.map((cat) => (
-                  <SelectItem key={cat} value={cat}>
-                    {cat}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {errors.category && (
-              <p className="text-xs text-red-600">{errors.category.message}</p>
-            )}
-          </div>
-
-          {/* Subcategory — only for Investimentos */}
-          {selectedCategory === "Investimentos" && (
-            <div className="space-y-2">
-              <Label>Tipo de investimento</Label>
-              <Select
-                value={selectedSubcategory ?? ""}
-                onValueChange={(v) => setValue("subcategory", v)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o tipo (opcional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  {INVESTMENT_SUBCATEGORIES.map((sub) => (
-                    <SelectItem key={sub} value={sub}>
-                      {sub}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
           <DialogFooter className="pt-2">
             <Button
               type="button"
@@ -287,7 +230,11 @@ export function TransactionForm({
             >
               Cancelar
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className="bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-700"
+            >
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -296,7 +243,7 @@ export function TransactionForm({
               ) : isEditing ? (
                 "Salvar alterações"
               ) : (
-                "Adicionar"
+                "Registrar aporte"
               )}
             </Button>
           </DialogFooter>

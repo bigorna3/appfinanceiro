@@ -16,14 +16,14 @@ export function RecentTransactions({ transactions }: RecentTransactionsProps) {
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
         <CardTitle className="text-base">Transações Recentes</CardTitle>
         <Button variant="ghost" size="sm" asChild>
-          <Link href="/transactions" className="flex items-center gap-1 text-xs text-blue-600">
+          <Link href="/transactions" className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400">
             Ver todas <ArrowRight className="h-3 w-3" />
           </Link>
         </Button>
       </CardHeader>
       <CardContent>
         {transactions.length === 0 ? (
-          <p className="py-4 text-center text-sm text-slate-400">
+          <p className="py-4 text-center text-sm text-muted-foreground">
             Nenhuma transação registrada neste mês
           </p>
         ) : (
@@ -31,7 +31,7 @@ export function RecentTransactions({ transactions }: RecentTransactionsProps) {
             {transactions.map((t) => (
               <div
                 key={t.id}
-                className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2.5"
+                className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2.5"
               >
                 <div className="flex items-center gap-3 overflow-hidden">
                   <Badge
@@ -41,17 +41,19 @@ export function RecentTransactions({ transactions }: RecentTransactionsProps) {
                     {t.type === "income" ? "Receita" : "Despesa"}
                   </Badge>
                   <div className="overflow-hidden">
-                    <p className="truncate text-sm font-medium text-slate-700">
+                    <p className="truncate text-sm font-medium text-foreground">
                       {t.description}
                     </p>
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-muted-foreground">
                       {t.category} · {formatDate(t.date)}
                     </p>
                   </div>
                 </div>
                 <span
                   className={`ml-3 shrink-0 text-sm font-semibold ${
-                    t.type === "income" ? "text-green-600" : "text-red-600"
+                    t.type === "income"
+                      ? "text-green-600 dark:text-green-400"
+                      : "text-red-600 dark:text-red-400"
                   }`}
                 >
                   {t.type === "income" ? "+" : "-"}
