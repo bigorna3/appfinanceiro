@@ -6,7 +6,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Loader2, TrendingUp } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { MONTHS, INVESTMENT_SUBCATEGORIES, type Transaction } from "@/lib/types";
+import { MONTHS, type Transaction } from "@/lib/types";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { InvestmentForm } from "@/components/investments/investment-form";
 import { MarketTicker } from "@/components/investments/market-ticker";

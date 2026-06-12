@@ -1,8 +1,6 @@
 "use client";
 
-export const dynamic = "force-dynamic";
-
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -28,7 +26,7 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
-export default function ForgotPasswordPage() {
+function ForgotPasswordContent() {
   const supabase = createClient();
   const searchParams = useSearchParams();
   const linkExpired = searchParams.get("error") === "link_expirado";
@@ -146,5 +144,13 @@ export default function ForgotPasswordPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function ForgotPasswordPage() {
+  return (
+    <Suspense>
+      <ForgotPasswordContent />
+    </Suspense>
   );
 }

@@ -138,7 +138,7 @@ export function MarketTicker() {
       setStocksData(stocks);
       setFiisData(fiis);
       setLastUpdated(new Date());
-    } catch (e) {
+    } catch {
       setError("Não foi possível carregar as cotações. Tente novamente.");
     } finally {
       setLoading(false);
